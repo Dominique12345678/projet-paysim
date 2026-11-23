@@ -90,7 +90,7 @@ print(f"Mapping des types d'opérations : {type_map}")
 # 5. Dimension Comptes Émetteurs (dim_compte_emetteur)
 print("📥 Traitement des comptes émetteurs (nameOrig)...")
 orig_accounts = df_sample[['nameOrig']].drop_duplicates().copy()
-orig_accounts.rename(columns={'nameOrig': 'account_number'}, inplace=True)
+orig_accounts = orig_accounts.rename(columns={'nameOrig': 'account_number'})
 orig_accounts['account_type'] = orig_accounts['account_number'].apply(
     lambda x: 'Commerçant' if str(x).startswith('M') else 'Client'
 )
@@ -102,7 +102,7 @@ with engine.begin() as conn:
 
 # Insérer comptes émetteurs en bloc
 print(f"Insertion de {len(orig_accounts):,} comptes émetteurs uniques...")
-orig_accounts.to_sql("dim_compte_emetteur", engine, if_exists="append", index=False, chunksize=10000)
+orig_accounts.to_sql("dim_compte_emetteur", engine, if_exists="append", index=False, chunksize=5000, method="multi")
 
 # Récupérer l'ID des comptes émetteurs
 with engine.connect() as conn:
@@ -112,13 +112,13 @@ with engine.connect() as conn:
 # 6. Dimension Comptes Destinataires (dim_compte_destinataire)
 print("📥 Traitement des comptes destinataires (nameDest)...")
 dest_accounts = df_sample[['nameDest']].drop_duplicates().copy()
-dest_accounts.rename(columns={'nameDest': 'account_number'}, inplace=True)
+dest_accounts = dest_accounts.rename(columns={'nameDest': 'account_number'})
 dest_accounts['account_type'] = dest_accounts['account_number'].apply(
     lambda x: 'Commerçant' if str(x).startswith('M') else 'Client'
 )
 
 print(f"Insertion de {len(dest_accounts):,} comptes destinataires uniques...")
-dest_accounts.to_sql("dim_compte_destinataire", engine, if_exists="append", index=False, chunksize=10000)
+dest_accounts.to_sql("dim_compte_destinataire", engine, if_exists="append", index=False, chunksize=5000, method="multi")
 
 with engine.connect() as conn:
     dest_db = conn.execute(text("SELECT dest_account_id, account_number FROM dim_compte_destinataire;")).fetchall()
@@ -126,6 +126,10 @@ with engine.connect() as conn:
 
 # 7. Préparation de la table de faits
 print("\n📊 Préparation de fact_transactions...")
+df_sample = df_sample.rename(columns={
+    'isFraud': 'is_fraud',
+    'isFlaggedFraud': 'is_flagged_fraud'
+})
 df_sample['time_id'] = df_sample['step']
 df_sample['type_id'] = df_sample['type'].map(type_map)
 df_sample['orig_account_id'] = df_sample['nameOrig'].map(orig_map)
@@ -141,15 +145,9 @@ fact_df = df_sample[[
     'is_flagged_fraud'
 ]].copy()
 
-# Renommer colonnes pour matcher la table SQL
-fact_df.rename(columns={
-    'isFraud': 'is_fraud',
-    'isFlaggedFraud': 'is_flagged_fraud'
-}, inplace=True)
-
 # 8. Insertion dans fact_transactions
-print(f"🚀 Insertion de {len(fact_df):,} transactions dans fact_transactions (par lots de 10 000)...")
-fact_df.to_sql("fact_transactions", engine, if_exists="append", index=False, chunksize=10000)
+print(f"🚀 Insertion de {len(fact_df):,} transactions dans fact_transactions (par lots optimisés)...")
+fact_df.to_sql("fact_transactions", engine, if_exists="append", index=False, chunksize=5000, method="multi")
 
 elapsed = time.time() - start_time
 print("\n" + "="*70)
