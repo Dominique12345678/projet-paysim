@@ -28,9 +28,11 @@ if not database_url:
         print("Veuillez copier le fichier .env.example vers .env et renseigner vos identifiants Render.")
         sys.exit(1)
 
-# Corriger si Render fournit l'URL au format 'postgres://' au lieu de 'postgresql://' pour SQLAlchemy
+# Corriger le protocole pour SQLAlchemy avec psycopg2
 if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 print(f"🔄 Tentative de connexion au serveur PostgreSQL Render...")
 
