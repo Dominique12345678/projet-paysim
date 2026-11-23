@@ -1,0 +1,33 @@
+# Environnements virtuels
+venv/
+.venv/
+env/
+ENV/
+
+# Variables d'environnement & secrets (CRITIQUE)
+.env
+.env.local
+*.env
+
+# Fichiers de données volumineux (Kaggle PaySim > 1.5 Go)
+data/*.csv
+data/*.zip
+*.csv
+*.parquet
+*.zip
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Fichiers système & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Power BI temporaires
+*.tmp
